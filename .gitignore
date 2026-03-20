@@ -9,3 +9,6 @@ htmlcov/
 *.egg-info/
 dist/
 build/
+instance/
+*.db
+*.sqlite3
