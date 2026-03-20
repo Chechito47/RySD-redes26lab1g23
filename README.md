@@ -2,6 +2,12 @@
 
 Proyecto base para implementar la API según el contrato en `openapi.yaml`. El archivo **openapi.yaml** define los endpoints; las rutas están registradas en **app.py** y la lógica de cada una se implementa en los módulos de **src/** (usuarios, juegos, sugerencias, wikidata, filtros).
 
+## Integrantes 
+- Álvarez, Lis Ailín
+- Arndt Kiefer
+- Pinilla, Lautaro
+- Sabino, Lucas
+
 ## Requisitos
 
 - **Docker (recomendado)** para ejecutar la API y el grading sin instalar Python localmente.
@@ -57,3 +63,22 @@ Deben completar en el README (o en un archivo referenciado desde él) un **glosa
 ## Enunciado
 
 Ver **enunciado.md** en esta carpeta para las fases del laboratorio y entregables. La **Parte 1** del enunciado (ejercicios con curl sobre Wikidata) se hace antes o en paralelo; a partir de la **Parte 2** usás este proyecto (configuración, Swagger, implementación).
+
+## Documentación y Entregables
+
+### Evidencias de Pruebas:
+Los resultados de los ejercicios de curl (Parte 1) y las pruebas manuales de la API (Parte 3 en adelante) se encuentran en el archivo [EVIDENCIAS.md](./EVIDENCIAS.md). Además se puede encontrar la reflexión sobre los testeos iniciales. 
+
+### Presentación:
+[Link al presentación](http://link.com)]
+
+### Video de Defensa:
+[Link al video](http://link.com)
+
+## Metodología de Trabajo
+
+...
+
+## Uso de IA y Reflexión Conceptual
+
+...
