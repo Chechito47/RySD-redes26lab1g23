@@ -34,8 +34,8 @@ def listar_usuarios():
         Response: JSON con la lista de usuarios (cada uno con id y nombre).
         Código 200.
     """
-    return jsonify({"error": "No implementado"}), 501
-
+    
+    return jsonify(USUARIOS), 200
 
 def obtener_usuario(usuario_id: int):
     """Obtiene un usuario por su id.
@@ -47,7 +47,15 @@ def obtener_usuario(usuario_id: int):
         Response: JSON del usuario (id, nombre) si existe; 200.
         Si no existe: JSON con error y código 404.
     """
-    return jsonify({"error": "No implementado"}), 501
+
+    # Busco al usuario
+    usuario = next((u for u in USUARIOS if u["id"] == usuario_id), None)
+
+    if usuario:
+        return jsonify(usuario), 200
+    
+    return jsonify({"error": "Usuario no encontrado"}), 404
+    
 
 
 def crear_usuario():
@@ -86,7 +94,25 @@ def actualizar_usuario(usuario_id: int):
     Returns:
         Response: JSON del usuario actualizado y 200; 404 si no existe, 400 si body inválido.
     """
-    return jsonify({"error": "No implementado"}), 501
+
+    if not request.json or "nombre" not in request.json:
+        return jsonify({"error": "Datos invalidos"}), 400
+
+    # Busco al usuario
+    usuario = next((u for u in USUARIOS if u["id"] == usuario_id), None)
+
+    if not usuario: 
+        return jsonify({"error": "Usuario no encontrado"}), 404
+    
+    # Cambio el nombre del usuario a su nuevo nombre
+    nombre_nuevo = request.json["nombre"]
+    usuario["nombre"] = nombre_nuevo
+
+    # Persistencia
+    _persist_usuarios()
+
+    return jsonify(usuario), 200
+
 
 
 def eliminar_usuario(usuario_id: int):
@@ -98,4 +124,23 @@ def eliminar_usuario(usuario_id: int):
     Returns:
         Response: JSON con mensaje de éxito y 200; 404 si el usuario no existe.
     """
-    return jsonify({"error": "No implementado"}), 501
+
+    # Busco al usuario
+    usuario = next((u for u in USUARIOS if u["id"] == usuario_id), None)
+    
+    if not usuario: 
+        return jsonify({"error": "Usuario no encontrado"}), 404
+
+    # Lo elimino de usuarios
+    USUARIOS.remove(usuario)
+
+    # ELimino su lista de juegos
+    if usuario_id in LISTAS_JUEGOS:
+        del LISTAS_JUEGOS[usuario_id]
+
+    # Persistencia
+    _persist_usuarios()
+    _persist_listas()
+
+    return jsonify({"mensaje": "Usuario eliminado"}), 200
+
