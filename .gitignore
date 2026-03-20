@@ -12,3 +12,4 @@ build/
 instance/
 *.db
 *.sqlite3
+:memory:
