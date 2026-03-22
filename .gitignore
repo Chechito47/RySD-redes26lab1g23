@@ -9,12 +9,6 @@ htmlcov/
 *.egg-info/
 dist/
 build/
-<<<<<<< HEAD
-instance/
-*.db
-*.sqlite3
-:memory:
-=======
 
 
 # Byte-compiled / optimized / DLL files
@@ -236,4 +230,3 @@ __marimo__/
 
 #memory
 :memory:
->>>>>>> parte-dos-lis
