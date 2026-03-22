@@ -123,3 +123,14 @@ curl -A "LabRedes2026/1.0" "[https://www.wikidata.org/w/api.php?action=wbsearche
     1. El primer resultado (`Q8093`) trata sobre la **empresa multinacional japonesa** de videojuegos y electrónica de consumo.
     2. El segundo resultado (`Q170323`) se refiere específicamente a la **consola portátil** de videojuegos Nintendo DS.
     3. **Observación**: A pesar de solicitar la búsqueda en japonés (`language=ja`), la API devolvió las descripciones en inglés/multilingüe.
+
+
+## Parte 2: Configuración del entorno, Swagger y primeros tests
+
+Al iniciar la **Parte 2**, se realizó una ejecución de `make test` para establecer un punto de partida. Los resultados obtenidos fueron:
+
+ **Coverage Total**: 67.67% de 70% requerido como mínimo.<br>
+**Tests**: 32 fallidos, 12 pasados, 7 skippeados.<br>
+**Linter (Ruff)**: 9 errores detectados en `src/juegos.py`, `src/sugerencias.py` y `src/wikidata.py` por imports no utilizados (`F401`).<br>
+**Principales bloqueantes**: La mayoría de los endpoints devuelven `501 Not Implemented`, que fue el error otorgado por la cátedra en la mayoría de las funciones para que la API levante pero nos diga que el servidor reconoce el método y el endpoint, pero no tiene la lógica programada para ejecutarlo. <br>
+Seguramente los errores del linter son de librerías que se deberían utilizar una vez implementadas (o deberían ser lineas a borrar si efectivamente no son usadas en la implementación)

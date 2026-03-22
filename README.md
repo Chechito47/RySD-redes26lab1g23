@@ -60,11 +60,15 @@ Los tests en **test_metrics.py** comprueban estilo (ruff) y complejidad ciclomá
 
 Deben completar en el README (o en un archivo referenciado desde él) un **glosario** con definiciones de los conceptos del laboratorio. Incluir al menos: API REST, endpoint, recurso, idempotencia, contrato de API, cobertura de tests, complejidad ciclomática, linters, Docker, health check, timeout, variables de entorno, y los que se mencionan en el enunciado (por ejemplo en "Antes de empezar: conceptos de red"). Agregar además otros términos que les parezcan relevantes para el proyecto.
 
-## Enunciado
+Deben armar un glosario con de niciones de los conceptos del laboratorio (por ejemplo: API REST, endpoint, recurso, idempotencia,
+contrato de API, cobertura de tests, complejidad ciclomática, linters, Docker, health check, timeout, variables de entorno, y los que guren en el
+enunciado). Incluir además otros términos que les parezcan relevantes para el proyecto.
 
-Ver **enunciado.md** en esta carpeta para las fases del laboratorio y entregables. La **Parte 1** del enunciado (ejercicios con curl sobre Wikidata) se hace antes o en paralelo; a partir de la **Parte 2** usás este proyecto (configuración, Swagger, implementación).
 
 ## Documentación y Entregables
+
+### Enunciado
+Ver **enunciado.md** en esta carpeta para las fases del laboratorio y entregables. La **Parte 1** del enunciado (ejercicios con curl sobre Wikidata) se hace antes o en paralelo; a partir de la **Parte 2** usás este proyecto (configuración, Swagger, implementación).
 
 ### Evidencias de Pruebas:
 Los resultados de los ejercicios de curl (Parte 1) y las pruebas manuales de la API (Parte 3 en adelante) se encuentran en el archivo [EVIDENCIAS.md](./EVIDENCIAS.md). Además se puede encontrar la reflexión sobre los testeos iniciales. 
@@ -76,9 +80,21 @@ Los resultados de los ejercicios de curl (Parte 1) y las pruebas manuales de la 
 [Link al video](http://link.com)
 
 ## Metodología de Trabajo
+Metodología de trabajo en equipo (cómo se repartieron tareas, revisiones, etc.).
 
-...
+## Estuctura del proyecto 
+Breve descripción de los archivos o módulos principales del proyecto.
+
+## Preguntas conceptuales y reflexión
+incluir respuestas breves (o un apartado en el README) sobre: qué es una API REST y un contrato de API,
+para qué sirven los tests y la cobertura, qué es la complejidad ciclomática y por qué se limita, qué es un linter, para qué sirve Docker en este
+proyecto, y cómo realizaron el debugging cuando algo fallaba.
+
+## Decisiones de diseño
+qué decisiones de diseño tomaron (por ejemplo estructura de datos, uso de ltros compartidos) y qué problemas
+encontraron y cómo los resolvieron.
 
 ## Uso de IA y Reflexión Conceptual
-
-...
+ómo utilizaron asistentes de IA (ChatGPT, Copilot, Cursor, etc.) en el proyecto: en qué partes (código, tests,
+documentación, debugging), de qué forma (consultas, generación de código, explicaciones) y qué criterios usaron para revisar o adaptar lo
+generado. Si no usaron IA, indicarlo explícitamente.
