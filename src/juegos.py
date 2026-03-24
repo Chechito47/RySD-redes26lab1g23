@@ -30,6 +30,7 @@ from datetime import datetime, timezone
 from flask import request, jsonify
 
 from .store import USUARIOS, LISTAS_JUEGOS, CATALOGO_JUEGOS, _persist_listas
+from .filtros import ORDEN_VALIDOS_LISTA
 from . import wikidata
 from . import filtros
 
@@ -44,7 +45,14 @@ def _lista_usuario(usuario_id: int):
         Lista de ítems (dict con juego_id, tengo, quiero, jugado, me_gusta, fecha_agregado)
         o None si el usuario no existe.
     """
-    return None
+
+    usuario = any(u["id"] == usuario_id for u in USUARIOS)
+
+    if not usuario:
+        return None # Retorna 404 si el usuario no existe
+
+    # Retorna la lista del usuario, si no tiene retorna []
+    return LISTAS_JUEGOS.get(usuario_id, [])
 
 
 def _enriquecer_item(item: dict) -> dict | None:
@@ -87,8 +95,35 @@ def listar_juegos_usuario(usuario_id: int):
         Response: JSON con lista de juegos (cada uno con id, nombre, flags, etc.) y 200;
         404 si el usuario no existe.
     """
-    return jsonify({"error": "No implementado"}), 501
+    
+    # Obtener la lista y valido existencia del usuario
+    lista = _lista_usuario(usuario_id)
 
+    if lista is None:
+        return jsonify({"error": "usuario no encontrado"}), 404
+    
+    # Uso la funcion _enriquecer_item para enriquecer cada item de la lista 
+    lista_enriquecida = []
+    for item in lista:
+        item_completo = _enriquecer_item(item)
+        if item_completo:
+            lista_enriquecida.append(item_completo)
+
+    # Obtener los query params
+    genero = request.args.get("genero")
+    ordenar = request.args.get("ordenar", "nombre")
+    orden = request.args.get("orden", "asc")
+
+    # Aplico los filtros y el orden 
+    resultado = filtros.filtrar_y_ordenar(
+        lista_enriquecida,
+        genero = genero,
+        ordenar = ordenar,
+        orden = orden,
+        ordenes_validos = ORDEN_VALIDOS_LISTA
+    )
+
+    return jsonify(resultado), 200
 
 def _validar_body_agregar_juego():
     """Valida el body JSON de POST para agregar juego.
