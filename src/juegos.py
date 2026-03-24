@@ -100,7 +100,7 @@ def listar_juegos_usuario(usuario_id: int):
     lista = _lista_usuario(usuario_id)
 
     if lista is None:
-        return jsonify({"error": "usuario no encontrado"}), 404
+        return jsonify({"error": "Usuario no encontrado"}), 404
     
     # Uso la funcion _enriquecer_item para enriquecer cada item de la lista 
     lista_enriquecida = []
@@ -205,7 +205,7 @@ def agregar_juego_usuario(usuario_id: int):
         "tengo": bool(req.get("tengo", False)),
         "quiero": bool(req.get("quiero", False)),
         "jugado": bool(req.get("jugado", False)),
-        "me_gusta": bool(req.get("me_gusa", False)),
+        "me_gusta": bool(req.get("me_gusta", False)),
         "fecha_agregado": datetime.now(timezone.utc).isoformat()
     }
 
@@ -234,7 +234,7 @@ def actualizar_juego_usuario(usuario_id: int, juego_id: str):
     lista, existente = _lista_y_existente(usuario_id, juego_id)
 
     if lista is None:
-        return jsonify({"error": "Usuario no enconrtado"}), 404
+        return jsonify({"error": "Usuario no encontrado"}), 404
     if not existente:
         return jsonify({"error": "El juego no esta en la lista del usuario"}), 404
     
