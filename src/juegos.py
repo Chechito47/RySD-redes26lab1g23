@@ -29,7 +29,8 @@ Qué se espera que hagas:
 from datetime import datetime, timezone
 from flask import request, jsonify
 
-from .store import USUARIOS, LISTAS_JUEGOS, CATALOGO_JUEGOS, _persist_listas
+from .store import USUARIOS, LISTAS_JUEGOS, CATALOGO_JUEGOS, _persist_listas, _persist_catalogo
+from .filtros import ORDEN_VALIDOS_LISTA
 from . import wikidata
 from . import filtros
 
@@ -44,7 +45,14 @@ def _lista_usuario(usuario_id: int):
         Lista de ítems (dict con juego_id, tengo, quiero, jugado, me_gusta, fecha_agregado)
         o None si el usuario no existe.
     """
-    return None
+
+    usuario = any(u["id"] == usuario_id for u in USUARIOS)
+
+    if not usuario:
+        return None # Retorna 404 si el usuario no existe
+
+    # Retorna la lista del usuario, si no tiene retorna []
+    return LISTAS_JUEGOS.get(usuario_id, [])
 
 
 def _enriquecer_item(item: dict) -> dict | None:
@@ -87,8 +95,35 @@ def listar_juegos_usuario(usuario_id: int):
         Response: JSON con lista de juegos (cada uno con id, nombre, flags, etc.) y 200;
         404 si el usuario no existe.
     """
-    return jsonify({"error": "No implementado"}), 501
+    
+    # Obtener la lista y valido existencia del usuario
+    lista = _lista_usuario(usuario_id)
 
+    if lista is None:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+    
+    # Uso la funcion _enriquecer_item para enriquecer cada item de la lista 
+    lista_enriquecida = []
+    for item in lista:
+        item_completo = _enriquecer_item(item)
+        if item_completo:
+            lista_enriquecida.append(item_completo)
+
+    # Obtener los query params
+    genero = request.args.get("genero")
+    ordenar = request.args.get("ordenar", "nombre")
+    orden = request.args.get("orden", "asc")
+
+    # Aplico los filtros y el orden 
+    resultado = filtros.filtrar_y_ordenar(
+        lista_enriquecida,
+        genero = genero,
+        ordenar = ordenar,
+        orden = orden,
+        ordenes_validos = ORDEN_VALIDOS_LISTA
+    )
+
+    return jsonify(resultado), 200
 
 def _validar_body_agregar_juego():
     """Valida el body JSON de POST para agregar juego.
@@ -135,7 +170,51 @@ def agregar_juego_usuario(usuario_id: int):
         Response: JSON del ítem creado (enriquecido) y 201; 400 si falta campo, 404 si usuario
         o juego no existe, 409 si el juego ya está en la lista.
     """
-    return jsonify({"error": "No implementado"}), 501
+
+    # Valido el body
+    valid_body, datos = _validar_body_agregar_juego()
+    if valid_body:
+        return valid_body
+    
+    juego_id, req = datos
+    
+    # Obtengo la lista y veo si el juego ya existe
+    lista, existe = _lista_y_existente(usuario_id, juego_id)
+
+    if lista is None:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+
+    if existe:
+        return jsonify({"error": "El juego ya esta en la lista"}), 409
+
+    # Chequeo existencia del juego en el catalogo local o wikidata
+    info_juego = CATALOGO_JUEGOS.get(juego_id)
+
+    # Si no esta local chequeo en wikidata
+    if not info_juego:
+        info_juego = wikidata.obtener_juego(juego_id)
+        if not info_juego:
+            return jsonify({"error": "Juego no encontrado en el catalogo ni wikidata"}), 404
+        
+        # Si wikidata lo encontro, lo guardo en el catalogo local para el futuro
+        CATALOGO_JUEGOS[juego_id] = info_juego
+    
+    # Creo el nuevo item para la lista del usuario
+    nuevo_item = {
+        "juego_id": juego_id,
+        "tengo": bool(req.get("tengo", False)),
+        "quiero": bool(req.get("quiero", False)),
+        "jugado": bool(req.get("jugado", False)),
+        "me_gusta": bool(req.get("me_gusta", False)),
+        "fecha_agregado": datetime.now(timezone.utc).isoformat()
+    }
+
+    # Persistencia
+    lista.append(nuevo_item)
+    _persist_listas()
+    _persist_catalogo()
+
+    return jsonify(_enriquecer_item(nuevo_item)), 201
 
 
 def actualizar_juego_usuario(usuario_id: int, juego_id: str):
@@ -150,7 +229,29 @@ def actualizar_juego_usuario(usuario_id: int, juego_id: str):
     Returns:
         Response: JSON del ítem actualizado y 200; 404 si usuario o juego en lista no existe.
     """
-    return jsonify({"error": "No implementado"}), 501
+    
+    lista, existente = _lista_y_existente(usuario_id, juego_id)
+
+    if lista is None:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+    if not existente:
+        return jsonify({"error": "El juego no esta en la lista del usuario"}), 404
+    
+    if not request.json:
+        return jsonify({"error": "Datos invalidos"}), 400
+
+    req = request.json
+
+    # Actualizar solo los campos que vengan en el json
+    existente["tengo"] = bool(req.get("tengo", existente.get("tengo", False)))
+    existente["quiero"] = bool(req.get("quiero", existente.get("quiero", False)))
+    existente["jugado"] = bool(req.get("jugado", existente.get("jugado", False)))
+    existente["me_gusta"] = bool(req.get("me_gusta", existente.get("me_gusta", False)))
+
+    # Persistir
+    _persist_listas()
+
+    return jsonify(_enriquecer_item(existente)), 200
 
 
 def eliminar_juego_usuario(usuario_id: int, juego_id: str):
@@ -163,4 +264,16 @@ def eliminar_juego_usuario(usuario_id: int, juego_id: str):
     Returns:
         Response: JSON con mensaje de éxito y 200; 404 si usuario o juego en lista no existe.
     """
-    return jsonify({"error": "No implementado"}), 501
+    lista, existente = _lista_y_existente(usuario_id, juego_id)
+    
+    if lista is None:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+    if not existente:
+        return jsonify({"error": "El juego no está en la lista del usuario"}), 404
+
+    # 3. Eliminar el ítem de la lista
+    lista.remove(existente)
+
+    _persist_listas()
+
+    return jsonify({"mensaje": "Juego eliminado de la lista"}), 200
