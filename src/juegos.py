@@ -29,7 +29,7 @@ Qué se espera que hagas:
 from datetime import datetime, timezone
 from flask import request, jsonify
 
-from .store import USUARIOS, LISTAS_JUEGOS, CATALOGO_JUEGOS, _persist_listas
+from .store import USUARIOS, LISTAS_JUEGOS, CATALOGO_JUEGOS, _persist_listas, _persist_catalogo
 from .filtros import ORDEN_VALIDOS_LISTA
 from . import wikidata
 from . import filtros
@@ -170,7 +170,52 @@ def agregar_juego_usuario(usuario_id: int):
         Response: JSON del ítem creado (enriquecido) y 201; 400 si falta campo, 404 si usuario
         o juego no existe, 409 si el juego ya está en la lista.
     """
-    return jsonify({"error": "No implementado"}), 501
+
+    # Valido el body
+    valid_body, datos = _validar_body_agregar_juego()
+    if valid_body:
+        return valid_body # Devuelve jsonify con 404
+    
+    juego_id, req = datos
+    
+    # Obtengo la lista y veo si el juego ya existe
+    lista, existe = _lista_y_existente(usuario_id, juego_id)
+
+    if lista is None:
+        return jsonify({"error": "Usuario no encotrado"}), 404
+
+    if existe:
+        return jsonify({"error": "El juego ya esta en la lista"}), 409
+
+    # Chequeo existencia del juego en el catalogo local o wikidata
+    info_juego = CATALOGO_JUEGOS.get(juego_id)
+
+    # Si no esta local chequeo en wikidata
+    if not info_juego:
+        info_juego = wikidata.obtener_juego(juego_id)
+        if not info_juego:
+            return jsonify({"error": "Juego no encontrado en el catalogo ni wikidata"}), 404
+        
+        # Si wikidata lo encontro, lo guado en el catalogo local para el futuro
+        CATALOGO_JUEGOS[juego_id] = info_juego
+    
+    # Creo el nuevo item para la lista del usuario
+    nuevo_item = {
+        "juego_id": juego_id,
+        "tengo": bool(req.get("tengo", False)),
+        "quiero": bool(req.get("quiero", False)),
+        "jugado": bool(req.get("jugado", False)),
+        "me_gusta": bool(req.get("me_gusa", False)),
+        "fecha_agregado": datetime.now(timezone.utc).isoformat()
+    }
+
+    # Persistencia
+    lista.append(nuevo_item)
+    _persist_listas()
+    _persist_catalogo()
+
+    return jsonify(_enriquecer_item(nuevo_item)), 201
+
 
 
 def actualizar_juego_usuario(usuario_id: int, juego_id: str):
