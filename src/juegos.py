@@ -174,7 +174,7 @@ def agregar_juego_usuario(usuario_id: int):
     # Valido el body
     valid_body, datos = _validar_body_agregar_juego()
     if valid_body:
-        return valid_body # Devuelve jsonify con 404
+        return valid_body
     
     juego_id, req = datos
     
@@ -182,7 +182,7 @@ def agregar_juego_usuario(usuario_id: int):
     lista, existe = _lista_y_existente(usuario_id, juego_id)
 
     if lista is None:
-        return jsonify({"error": "Usuario no encotrado"}), 404
+        return jsonify({"error": "Usuario no encontrado"}), 404
 
     if existe:
         return jsonify({"error": "El juego ya esta en la lista"}), 409
@@ -196,7 +196,7 @@ def agregar_juego_usuario(usuario_id: int):
         if not info_juego:
             return jsonify({"error": "Juego no encontrado en el catalogo ni wikidata"}), 404
         
-        # Si wikidata lo encontro, lo guado en el catalogo local para el futuro
+        # Si wikidata lo encontro, lo guardo en el catalogo local para el futuro
         CATALOGO_JUEGOS[juego_id] = info_juego
     
     # Creo el nuevo item para la lista del usuario
@@ -215,7 +215,6 @@ def agregar_juego_usuario(usuario_id: int):
     _persist_catalogo()
 
     return jsonify(_enriquecer_item(nuevo_item)), 201
-
 
 
 def actualizar_juego_usuario(usuario_id: int, juego_id: str):
