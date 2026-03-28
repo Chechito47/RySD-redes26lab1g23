@@ -2,9 +2,8 @@ import pytest
 
 # Fixture para tener un usuario de base en cada test
 @pytest.fixture
-def usuario_ejemplo(client):
-    res = client.post("/usuarios", json={"nombre": "Juan Carlos"})
-    return res.get_json()
+def usuario_ejemplo(auth_user):
+    return auth_user(nombre="Juan Carlos")
 
 # Tests felices :)
 def test_listar_usuarios_200(client, usuario_ejemplo):
@@ -13,11 +12,11 @@ def test_listar_usuarios_200(client, usuario_ejemplo):
     
     assert r.status_code == 200
     assert isinstance(r.get_json(), list)
-    assert any(u["id"] == usuario_ejemplo["id"] for u in r.get_json())
+    assert any(u["id"] == usuario_ejemplo["usuario_id"] for u in r.get_json())
 
 def test_obtener_usuario_200(client, usuario_ejemplo):
     """Prueba obtener un usuario existente por ID."""
-    uid = usuario_ejemplo["id"]
+    uid = usuario_ejemplo["usuario_id"]
     r = client.get(f"/usuarios/{uid}")
     
     assert r.status_code == 200
@@ -25,16 +24,16 @@ def test_obtener_usuario_200(client, usuario_ejemplo):
 
 def test_actualizar_usuario_200(client, usuario_ejemplo):
     """Prueba cambiar el nombre de un usuario existente."""
-    uid = usuario_ejemplo["id"]
-    r = client.put(f"/usuarios/{uid}", json={"nombre": "Juan Editado"})
+    uid = usuario_ejemplo["usuario_id"]
+    r = client.put(f"/usuarios/{uid}", json={"nombre": "Juan Editado"}, headers=usuario_ejemplo["headers"])
     
     assert r.status_code == 200
     assert r.get_json()["nombre"] == "Juan Editado"
 
 def test_eliminar_usuario_200(client, usuario_ejemplo):
     """Prueba borrar un usuario existente."""
-    uid = usuario_ejemplo["id"]
-    r = client.delete(f"/usuarios/{uid}")
+    uid = usuario_ejemplo["usuario_id"]
+    r = client.delete(f"/usuarios/{uid}", headers=usuario_ejemplo["headers"])
     
     assert r.status_code == 200
     assert "mensaje" in r.get_json()
@@ -57,14 +56,16 @@ def test_crear_usuario_sin_nombre_400(client):
     
     assert r.status_code == 400
 
-def test_actualizar_usuario_inexistente_404(client):
-    """Fuerza el 404 al intentar editar a alguien que no existe."""
-    r = client.put("/usuarios/999999", json={"nombre": "Fantasma"})
-    
-    assert r.status_code == 404
+def test_actualizar_usuario_inexistente_404(client, auth_user):
+    """Con token de otro usuario, editar ID inexistente devuelve 401."""
+    auth = auth_user()
+    r = client.put("/usuarios/999999", json={"nombre": "Fantasma"}, headers=auth["headers"])
 
-def test_eliminar_usuario_inexistente_404(client):
-    """Fuerza el 404 al intentar borrar a alguien que no existe."""
-    r = client.delete("/usuarios/999999")
-    
-    assert r.status_code == 404
+    assert r.status_code == 401
+
+def test_eliminar_usuario_inexistente_404(client, auth_user):
+    """Con token de otro usuario, borrar ID inexistente devuelve 401."""
+    auth = auth_user()
+    r = client.delete("/usuarios/999999", headers=auth["headers"])
+
+    assert r.status_code == 401
