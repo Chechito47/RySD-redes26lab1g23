@@ -125,11 +125,9 @@ def requiere_auth(f):
 
     @wraps(f)
     def wrapper(*args, **kwargs):
-        # Si no se envía header Authorization, no aplicamos auth estricta
-        # (los tests públicos ejercitan endpoints sin token).
         auth_header = request.headers.get("Authorization", "").strip()
         if not auth_header:
-            return f(*args, **kwargs)
+            return jsonify({"error": "No autorizado"}), 401
 
         usuario_id = auth.obtener_usuario_actual()
         if usuario_id is None:
@@ -146,11 +144,6 @@ def requiere_mismo_usuario(f):
 
     @wraps(f)
     def wrapper(usuario_id, *args, **kwargs):
-        auth_header = request.headers.get("Authorization", "").strip()
-        # Sin token: no aplicamos la verificación de identidad (tests públicos).
-        if not auth_header:
-            return f(usuario_id, *args, **kwargs)
-
         actual = getattr(g, "usuario_actual_id", None)
         if actual is None or actual != usuario_id:
             return jsonify({"error": "No autorizado"}), 401

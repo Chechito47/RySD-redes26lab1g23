@@ -4,6 +4,7 @@ import os
 import sys
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+from uuid import uuid4
 
 # Usar SQLite en memoria para tests (antes de importar la app/store)
 os.environ.setdefault("LAB1_DATABASE", ":memory:")
@@ -139,3 +140,32 @@ def wikidata_mock():
 def rawg_mock(wikidata_mock):
     """Alias de wikidata_mock para compatibilidad con tests que referencian rawg_mock."""
     return wikidata_mock
+
+
+@pytest.fixture
+def auth_user(client):
+    """Crea un usuario vía /auth/registro, hace login y devuelve token + headers."""
+
+    def _create(nombre: str = "Usuario Auth", password: str = "clave123"):
+        username = f"user_{uuid4().hex[:8]}"
+
+        r_reg = client.post(
+            "/auth/registro",
+            json={"username": username, "nombre": nombre, "password": password},
+        )
+        assert r_reg.status_code == 201
+        usuario = r_reg.get_json()
+
+        r_login = client.post("/auth/login", json={"username": username, "password": password})
+        assert r_login.status_code == 200
+        token = r_login.get_json()["token"]
+
+        return {
+            "usuario_id": usuario["id"],
+            "username": username,
+            "password": password,
+            "token": token,
+            "headers": {"Authorization": f"Token {token}"},
+        }
+
+    return _create

@@ -56,14 +56,94 @@ Si no usás make: `PYTHONPATH=. python3 -m src.app`.
 
 Los tests en **test_metrics.py** comprueban estilo (ruff) y complejidad ciclomática; si fallan, corregir el código en **src/** (refactorizar funciones demasiado largas o con muchas ramas).
 
+## Autenticación
+
+### 1) Hashing de contraseñas
+
+La API implementa hashing de contraseñas con **werkzeug.security** para evitar almacenamiento en texto plano.
+
+- En `POST /auth/registro`, la contraseña recibida se transforma con `generate_password_hash(...)` antes de persistirse en `password_hash`.
+- En `POST /auth/login`, la validación se realiza con `check_password_hash(...)` contra el hash almacenado.
+
+El algoritmo no solo hashea la clave, sino que genera un "Salt" (una semilla aleatoria única) para cada usuario. Al iniciar sesión, la API recibe la contraseña en texto plano y utiliza check_password_hash para extraer el Salt del hash almacenado y aplicarlo a la clave recibida. Si el nuevo resultado coincide con el registro de la base de datos, se valida la identidad del usuario sin haber guardado nunca la contraseña original.
+
+### 2) Expiración de tokens
+
+Para el login, el backend arma un token y le pone una fecha de vencimiento en UTC sumando los minutos que se definen en la variable AUTH_TOKEN_TTL_MINUTES (por defecto, 60 minutos) a la hora actual. Esa fecha se guarda como token_expira_en en la base de datos.
+
+Después, cuando se quiere utilizar ese token, el sistema chequea que no esté vencido comparándolo con la hora actual. Si el token no existe, está mal formateado o ya pasó la hora de vencimiento, la API devuelve un 401 (No autorizado) y no continúa.
+
+### 3) Guía rápida con curl
+
+#### Registrar usuario (`POST /auth/registro`)
+
+```bash
+curl -X POST http://localhost:5000/auth/registro \
+	-H "Content-Type: application/json" \
+	-d '{
+		"username": "lisalv",
+		"nombre": "Lis",
+		"password": "pass123"
+	}'
+```
+
+#### Login para obtener token (`POST /auth/login`)
+
+```bash
+curl -X POST http://localhost:5000/auth/login \
+	-H "Content-Type: application/json" \
+	-d '{
+		"username": "lisalv",
+		"password": "pass123"
+	}'
+```
+
+Respuesta esperada (ejemplo):
+
+```json
+{"token":"<TOKEN>"}
+```
+
+#### Usar token en header `Authorization: Token <TOKEN>`
+
+Ejemplo de request con token:
+
+```bash
+curl -X GET http://localhost:5000/usuarios/1/juegos \
+	-H "Authorization: Token <TOKEN>"
+```
+
+Ejemplo en endpoint protegido (requiere token válido del mismo usuario):
+
+```bash
+curl -X PUT http://localhost:5000/usuarios/1 \
+	-H "Content-Type: application/json" \
+	-H "Authorization: Token <TOKEN>" \
+	-d '{"nombre":"Lis Actualizada"}'
+```
+
+Para endpoints protegidos de modificación (por ejemplo `PUT/DELETE /usuarios/<id>` y `POST/PUT/DELETE /usuarios/<id>/juegos...`), si falta token, es inválido, está vencido o no corresponde al mismo `<id>`, la API responde **401**.
+
 ## Glosario
 
 Deben completar en el README (o en un archivo referenciado desde él) un **glosario** con definiciones de los conceptos del laboratorio. Incluir al menos: API REST, endpoint, recurso, idempotencia, contrato de API, cobertura de tests, complejidad ciclomática, linters, Docker, health check, timeout, variables de entorno, y los que se mencionan en el enunciado (por ejemplo en "Antes de empezar: conceptos de red"). Agregar además otros términos que les parezcan relevantes para el proyecto.
 
-Deben armar un glosario con de niciones de los conceptos del laboratorio (por ejemplo: API REST, endpoint, recurso, idempotencia,
-contrato de API, cobertura de tests, complejidad ciclomática, linters, Docker, health check, timeout, variables de entorno, y los que guren en el
-enunciado). Incluir además otros términos que les parezcan relevantes para el proyecto.
-
+* **API REST:** Arquitectura de red basada en recursos identificables por URL, que utiliza una comunicación sin estado (stateless).
+* **Contrato de API:** Especificación formal (en este caso, OpenAPI/openapi.yaml) que define los métodos, rutas, cuerpos y respuestas esperadas de la aplicación.
+* **Recurso:** Entidad identificada por una URL (por ejemplo, un usuario o una lista de juegos) sobre la cual se aplican operaciones REST.
+* **Endpoint:** URL o ruta específica que expone una operación de la API, combinando un método HTTP con un path (ej. GET /usuarios).
+* **Idempotencia:** Propiedad de una operación que, al ser ejecutada varias veces, produce el mismo resultado que si se ejecutara una sola vez (ej. GET o PUT).
+* **Cobertura de tests:** Porcentaje de líneas de código en `src/` que son efectivamente ejecutadas por los tests automatizados; se exige un mínimo del 70%.
+* **Complejidad Ciclomática:** Medida del número de caminos independientes que puede seguir una función; en este proyecto el límite máximo es 8 por función.
+* **Linters (Ruff):** Herramientas que analizan el código de forma estática (sin ejecutarlo) para detectar errores de estilo, bugs potenciales o malas prácticas.
+* **Docker:** Plataforma de contenedores que permite empaquetar la aplicación y sus dependencias para asegurar que se ejecute de la misma forma en cualquier entorno.
+* **Health Check:** Endpoint especial (`/health`) utilizado para monitorear que el servidor está levantado y funcionando correctamente.
+* **Timeout:** Límite de tiempo máximo que nuestra API espera una respuesta de un servicio externo (como Wikidata) antes de cortar la conexión para no bloquearse indefinidamente.
+* **Variables de Entorno:** Valores configurables fuera del código (generalmente en un archivo `.env`) que permiten modificar el comportamiento de la app según el entorno.
+* **Hashing de contraseñas:** Proceso criptográfico de una sola vía que transforma una contraseña en una cadena de caracteres irreconocible antes de guardarla en la base de datos.
+* **Salt:** Semilla aleatoria única que se mezcla con la contraseña antes del hasheo para evitar que dos usuarios con la misma clave tengan el mismo hash almacenado.
+* **Token Opaco:** Identificador único generado al hacer login que sirve como prueba de identidad en peticiones posteriores sin necesidad de enviar la contraseña cada vez.
+* **TTL (Time To Live):** Tiempo de vida definido para un token; una vez superado este lapso, el token se considera vencido y la API debe rechazarlo con un error 401.
 
 ## Documentación y Entregables
 

@@ -1,20 +1,19 @@
-"""Versión INSEGURA de autenticación para el kickstarter.
+"""Autenticación básica: registro, login y validación de token.
 
-Esta implementación es funcional pero tiene dos problemas graves:
-
-- Guarda las contraseñas en texto plano (password_hash == password).
-- No maneja expiración real de tokens (token_expira_en queda en NULL).
-
-El objetivo de la Parte 6 del enunciado es justamente corregir estos
-problemas en la solución final.
+Implementa:
+- Hash de contraseñas (no se almacenan en texto plano).
+- Emisión de token opaco con expiración configurable por entorno.
+- Validación de token vigente para operaciones protegidas.
 """
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 import os
 from uuid import uuid4
 
 from flask import jsonify
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from . import auth_common
 from .store import guardar_credenciales, actualizar_token
@@ -23,8 +22,8 @@ from .store import guardar_credenciales, actualizar_token
 def _token_ttl_minutes() -> int:
     """TTL de tokens en minutos (default 60).
 
-    En la versión insegura del kickstarter NO se usa para setear expiración;
-    se deja como referencia para los estudiantes.
+    Se toma desde AUTH_TOKEN_TTL_MINUTES y se sanea para asegurar un
+    entero >= 1. Si el valor es inválido, usa 60.
     """
     raw = os.environ.get("AUTH_TOKEN_TTL_MINUTES", "60")
     try:
@@ -35,10 +34,10 @@ def _token_ttl_minutes() -> int:
 
 
 def registrar_usuario_auth():
-    """Handler para POST /auth/registro (kickstarter, INSEGURO).
+    """Handler para POST /auth/registro.
 
     - Crea el usuario correctamente.
-    - Guarda la contraseña en texto plano en password_hash (esto está mal).
+    - Guarda la contraseña hasheada en password_hash.
     """
     parsed, error = auth_common.parse_register_body()
     if error is not None:
@@ -54,18 +53,17 @@ def registrar_usuario_auth():
 
     usuario = auth_common.crear_usuario_basico(nombre)
 
-    # INSEGURO: password_hash == password en texto plano.
-    password_hash = password
+    password_hash = generate_password_hash(password)
     guardar_credenciales(usuario["id"], username, password_hash)
 
     return jsonify(usuario), 201
 
 
 def login():
-    """Handler para POST /auth/login (kickstarter, INSEGURO).
+    """Handler para POST /auth/login.
 
-    - Compara la contraseña en texto plano.
-    - Genera un token sin fecha de expiración útil (token_expira_en = NULL).
+    - Compara la contraseña contra el hash almacenado.
+    - Genera un token aleatorio y lo guarda con una expiración.
     """
     parsed, error = auth_common.parse_login_body()
     if error is not None:
@@ -79,22 +77,53 @@ def login():
         return error
     assert cred is not None
 
-    # INSEGURO: compara texto plano.
-    if cred["password_hash"] != password:
+    if not check_password_hash(cred["password_hash"], password):
         return jsonify({"error": "Credenciales inválidas"}), 401
 
     token = uuid4().hex
-    # INCOMPLETO: no se setea expiración real; queda NULL.
-    actualizar_token(cred["usuario_id"], token, None)
+    expira_en_dt = datetime.now(timezone.utc) + timedelta(minutes=_token_ttl_minutes())
+    expira_en = expira_en_dt.isoformat().replace("+00:00", "Z")
+    actualizar_token(cred["usuario_id"], token, expira_en)
 
     return jsonify({"token": token})
 
 
-def obtener_usuario_actual() -> int | None:
-    """Devuelve usuario_id asociado al token o None (kickstarter, sin expiración).
+def _parse_token_expira_en(raw_value: object) -> datetime | None:
+    """Parsea token_expira_en ISO8601 y devuelve datetime con tz, o None."""
+    if not isinstance(raw_value, str):
+        return None
 
-    - NO chequea expiración: cualquier token almacenado se considera válido.
-    - Esto es inseguro; la solución final debe usar token_expira_en.
+    value = raw_value.strip()
+    if not value:
+        return None
+
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
+
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+    return parsed if parsed.tzinfo is not None else None
+
+
+def _parse_usuario_id(raw_value: object) -> int | None:
+    """Convierte usuario_id a int o devuelve None si no es válido."""
+    if raw_value is None:
+        return None
+    try:
+        return int(raw_value)
+    except (TypeError, ValueError):
+        return None
+
+
+def obtener_usuario_actual() -> int | None:
+    """Devuelve usuario_id asociado al token o None si el token es inválido o expiró.
+
+        - Extrae token del header Authorization.
+        - Obtiene datos del token (incluyendo token_expira_en).
+        - Si token_expira_en es inválido o expiró, devuelve None.
     """
     token = auth_common.extraer_token_de_header()
     if not token:
@@ -103,6 +132,13 @@ def obtener_usuario_actual() -> int | None:
     if data is None:
         return None
 
-    usuario_id = data.get("usuario_id")
-    return int(usuario_id) if usuario_id is not None else None
+    token_expira_dt = _parse_token_expira_en(data.get("token_expira_en"))
+    if token_expira_dt is None:
+        return None
+
+    ahora = datetime.now(timezone.utc)
+    if token_expira_dt <= ahora:
+        return None
+
+    return _parse_usuario_id(data.get("usuario_id"))
 
