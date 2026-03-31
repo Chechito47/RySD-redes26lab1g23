@@ -88,4 +88,31 @@ def sugerir_juego(usuario_id: int):
         Response: JSON con id, nombre, descripcion, genero, lanzamiento, plataforma y 200;
         404 si el usuario no existe o no hay juegos que cumplan el criterio.
     """
-    return jsonify({"error": "No implementado"}), 501
+
+    genero = request.args.get("genero")
+
+    candidato = _candidatos_sugerencia(usuario_id, genero)
+
+    if candidato is None:
+        return jsonify({"error": "Usuario no encontrado"}), 404 
+
+    if not candidato:
+        return jsonify({"error": "No hay juegos candidatos para sugerir"}), 404
+    
+    juego = random.choice(candidato)
+
+    juego_data = CATALOGO_JUEGOS.get(juego["juego_id"])
+    
+    if not juego_data:
+        return jsonify({"error": "Juego no encontrado en catálogo"}), 404
+
+    resultado = {
+        "id": juego_data.get("id"),
+        "nombre": juego_data.get("nombre"),
+        "descripcion": juego_data.get("descripcion"),
+        "genero": juego_data.get("genero"),
+        "lanzamiento": juego_data.get("lanzamiento"),
+        "plataforma": juego_data.get("plataforma")
+    }
+
+    return jsonify(resultado), 200
