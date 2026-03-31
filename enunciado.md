@@ -283,84 +283,29 @@ Pensá `store.CATALOGO_JUEGOS` como el “USUARIOS” de los juegos: un dicciona
 
 ## Parte 6: Autenticación básica
 
-En esta parte vas a agregar **autenticación básica** a la API para que ciertas operaciones sólo se puedan hacer si el cliente se identifica correctamente. El objetivo NO es construir un sistema de seguridad de producción, sino entender conceptos mínimos:
+En el **proyecto base (kickstarter)** la autenticación **ya está implementada y cableada**: existen `POST /auth/registro` y `POST /auth/login`, las rutas en `app.py`, el módulo **`src/auth.py`** (versión deliberadamente **insegura** para que la corrijas), helpers en **`src/auth_common.py`** y la tabla **`credenciales`** en SQLite vía `store.py`. **No tenés que diseñar el flujo desde cero**: tu trabajo es **endurecer la seguridad** hasta cumplir el contrato en `openapi.yaml` y los tests.
 
-- No guardar contraseñas en texto plano.
-- Usar un **hash de contraseña** con una función estándar.
-- Emitir tokens opacos con **expiración** y rechazarlos cuando vencen.
-- Restringir qué puede hacer cada usuario sobre recursos propios y ajenos.
+El objetivo NO es un sistema de producción completo, sino conceptos mínimos que vas a **aplicar en código** sobre todo en `auth.py`:
 
-### Modelo de usuario y credenciales
+1. **Hash de contraseña:** dejar de guardar la contraseña en claro en `password_hash`; al registrar, persistir un **hash** con una función estándar (por ejemplo `werkzeug.security.generate_password_hash`); al hacer login, verificar con la función pareja (`check_password_hash` o equivalente), sin comparar texto plano.
+2. **Expiración del token:** al hacer login, generar el token opaco y guardar **`token_expira_en`** con un **TTL** por defecto razonable (por ejemplo **1 hora**), pudiendo parametrizarse con variable de entorno como referencia en el propio kickstarter.
+3. **Token vencido o inválido:** donde se interpreta el header `Authorization: Token <TOKEN>`, el token debe considerarse **inválido** si no existe, no tiene expiración coherente o **`token_expira_en` es anterior a “ahora”**; en esos casos las operaciones que exigen identidad válida deben responder **401** según lo que comprueban los tests públicos.
 
-- Cada usuario sigue teniendo `id` y `nombre` como hasta ahora.
-- Se agrega un campo **`username`** (string único) que se usará para login.
-- Las credenciales (usuario, contraseña y token) se guardan en una tabla/estructura separada (por ejemplo `credenciales` en la base SQLite) que contenga, como mínimo:
-  - `usuario_id` (FOREIGN KEY a usuarios).
-  - `username` (UNIQUE).
-  - `password_hash` (hash seguro de la contraseña).
-  - `token` (string opaco).
-  - `token_expira_en` (fecha/hora de expiración del token).
+### Modelo de datos (referencia)
 
-### Endpoints nuevos
-
-- `POST /auth/registro`:
-  - Registra un nuevo usuario con los campos:
-    - `username` (obligatorio, único).
-    - `nombre` (obligatorio).
-    - `password` (obligatorio).
-  - Si los datos son válidos y el `username` no existe:
-    - Crea el usuario en `usuarios`.
-    - Genera un `password_hash` usando una función estándar (por ejemplo `werkzeug.security.generate_password_hash` o `bcrypt`) y lo guarda en la tabla de credenciales.
-    - Devuelve **201** y los datos básicos del usuario (sin incluir `password` ni `password_hash`).
-  - Si los datos son inválidos → **400**.
-  - Si el `username` ya existe → **409**.
-
-- `POST /auth/login`:
-  - Recibe un body JSON con:
-    - `username`
-    - `password`
-  - Busca las credenciales por `username` y verifica la contraseña comparando `password` con `password_hash` (no debe comparar texto plano).
-  - Si las credenciales son válidas:
-    - Genera un **token opaco** (por ejemplo `uuid4().hex`).
-    - Calcula una fecha/hora de expiración `token_expira_en = ahora + TTL`, donde el **TTL (time-to-live)** tiene un valor por defecto de **1 hora** (se puede parametrizar con una variable de entorno, pero debe existir un valor por defecto).
-    - Guarda `token` y `token_expira_en` en la tabla de credenciales, **pisando cualquier token anterior** de ese usuario.
-    - Devuelve **200** con JSON `{ "token": "<TOKEN>" }`.
-  - Si las credenciales son inválidas → **401**.
+- Cada usuario sigue con `id` y `nombre`; el registro por auth agrega **`username`** único.
+- Tabla **`credenciales`** (u equivalente en `store`): `usuario_id`, `username` (UNIQUE), `password_hash`, `token`, `token_expira_en`.
 
 ### Uso del token y autorización mínima
 
-- Los clientes que deseen acceder a operaciones protegidas deben enviar el token en el header:
+- Header: `Authorization: Token <TOKEN>` (el contrato y Swagger lo documentan con el esquema de seguridad del OpenAPI).
 
-  ```http
-  Authorization: Token <TOKEN>
-  ```
+- **Autorización mínima:** el token prueba “soy el usuario `<id>`”; no hay roles.
+  - `PUT /usuarios/<id>` y `DELETE /usuarios/<id>`: sólo si el token corresponde a ese `<id>`; si no → **401**.
+  - `POST` / `PUT` / `DELETE` sobre `/usuarios/<id>/juegos...`: sólo si el token es del mismo `<id>`; si no → **401**.
+  - **`GET /usuarios/<id>/juegos`:** seguí el comportamiento descrito en **`openapi.yaml`** y los **tests públicos** de juegos. En esta edición **no** se pide modelo de lista pública/privada; una extensión posible para el futuro está anotada en el roadmap técnico del repositorio del laboratorio (docentes).
 
-- La API debe tener una función/helper que, dado un token:
-  - Lo busque en la tabla de credenciales.
-  - Compruebe que `token_expira_en` es posterior a la hora actual.
-  - Si el token no existe o está vencido, lo considere inválido.
-  - Si es válido, obtenga el `usuario_id` asociado.
-
-- **Autorización mínima (qué puede hacer cada token):**
-  - El token sólo prueba **“soy este usuario `<id>`”**. No hay roles ni admin.
-  - Nadie puede borrar o modificar un usuario distinto al del token:
-    - `PUT /usuarios/<id>` y `DELETE /usuarios/<id>` sólo se permiten si el `usuario_id` del token coincide con `<id>`. En caso contrario, deben devolver **401**.
-  - Nadie puede agregar, actualizar ni eliminar juegos en la lista de otro usuario:
-    - `POST /usuarios/<id>/juegos`
-    - `PUT /usuarios/<id>/juegos/<juego_id>`
-    - `DELETE /usuarios/<id>/juegos/<juego_id>`
-    - sólo se permiten si el token pertenece a `<id>`; de lo contrario deben devolver **401**.
-  - Lectura de listas de juegos:
-    - `GET /usuarios/<id>/juegos` debe comportarse así:
-      - Si la lista es **pública**, cualquier cliente (con o sin token) puede verla.
-      - Si la lista **no es pública**, sólo el propio usuario (token con `usuario_id == <id>`) puede verla; otros clientes deben recibir **401**.
-
-- Cualquier endpoint protegido que reciba:
-  - Sin header `Authorization`, o
-  - Un token inválido/expirado,
-  - debe devolver **401 Unauthorized**.
-
-En el proyecto base (`kickstarter/src/auth_common.py`) vas a encontrar helpers pensados para centralizar el parseo de bodies de registro/login, la verificación de unicidad de usernames y la extracción/validación básica del header `Authorization`. Usalos desde `src/auth.py` para no duplicar lógica y tomá como contrato los tests públicos de autenticación (`tests/test_public/test_api_auth.py`) y los esquemas de `openapi.yaml` al diseñar tu implementación segura (hash de contraseñas + tokens con expiración).
+Reutilizá los helpers de **`auth_common.py`** (parseo de bodies, unicidad de `username`, extracción del header) para no duplicar lógica. La referencia de comportamiento fino sigue siendo **`tests/test_public/test_api_auth.py`** y el OpenAPI (incluido `/auth/registro` y `/auth/login`).
 
 ### Relación con la aprobación
 

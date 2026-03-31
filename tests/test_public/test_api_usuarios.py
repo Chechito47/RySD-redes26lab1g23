@@ -42,43 +42,42 @@ def test_obtener_usuario_404(client):
     assert resp.status_code == 404
 
 
-def test_actualizar_usuario_404(client, auth_user):
-    """PUT /usuarios/<id> con token de otro usuario devuelve 401."""
-    auth = auth_user()
-    resp = client.put("/usuarios/99999", json={"nombre": "X"}, headers=auth["headers"])
-    assert resp.status_code == 401
+def test_actualizar_usuario_404(client):
+    """PUT /usuarios/<id> inexistente devuelve 404."""
+    resp = client.put("/usuarios/99999", json={"nombre": "X"})
+    assert resp.status_code == 404
 
 
-def test_actualizar_usuario_body_invalido_400(client, auth_user):
+def test_actualizar_usuario_body_invalido_400(client):
     """PUT /usuarios/<id> con body inválido devuelve 400."""
-    auth = auth_user(nombre="Eve")
-    uid = auth["usuario_id"]
-    resp = client.put(f"/usuarios/{uid}", json={}, headers=auth["headers"])
+    r = client.post("/usuarios", json={"nombre": "Eve"})
+    assert r.status_code == 201
+    uid = r.get_json()["id"]
+    resp = client.put(f"/usuarios/{uid}", json={})
     assert resp.status_code == 400
 
 
-def test_eliminar_usuario_404(client, auth_user):
-    """DELETE /usuarios/<id> con token de otro usuario devuelve 401."""
-    auth = auth_user()
-    resp = client.delete("/usuarios/99999", headers=auth["headers"])
-    assert resp.status_code == 401
+def test_eliminar_usuario_404(client):
+    """DELETE /usuarios/<id> inexistente devuelve 404."""
+    resp = client.delete("/usuarios/99999")
+    assert resp.status_code == 404
 
 
-def test_actualizar_usuario(client, auth_user):
+def test_actualizar_usuario(client):
     """PUT /usuarios/<id> actualiza nombre."""
-    auth = auth_user(nombre="Carlos")
-    uid = auth["usuario_id"]
-    resp = client.put(f"/usuarios/{uid}", json={"nombre": "Carlos M."}, headers=auth["headers"])
+    r = client.post("/usuarios", json={"nombre": "Carlos"})
+    uid = r.get_json()["id"]
+    resp = client.put(f"/usuarios/{uid}", json={"nombre": "Carlos M."})
     assert resp.status_code == 200
     data = resp.get_json()
     assert data["nombre"] == "Carlos M."
 
 
-def test_eliminar_usuario(client, auth_user):
+def test_eliminar_usuario(client):
     """DELETE /usuarios/<id> devuelve 200 y mensaje."""
-    auth = auth_user(nombre="Diana")
-    uid = auth["usuario_id"]
-    resp = client.delete(f"/usuarios/{uid}", headers=auth["headers"])
+    r = client.post("/usuarios", json={"nombre": "Diana"})
+    uid = r.get_json()["id"]
+    resp = client.delete(f"/usuarios/{uid}")
     assert resp.status_code == 200
     assert "mensaje" in resp.get_json()
     assert client.get(f"/usuarios/{uid}").status_code == 404

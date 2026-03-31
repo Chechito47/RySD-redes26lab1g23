@@ -120,6 +120,43 @@ def client():
 
 
 @pytest.fixture
+def auth_user(client):
+    """Factory fixture: crea usuario auth y devuelve id/token/headers.
+
+    Uso:
+        auth = auth_user()  # datos por defecto
+        auth = auth_user(nombre="Ana")
+    """
+
+    def _create(nombre: str = "Usuario Test", username: str | None = None, password: str = "clave"):
+        uname = username or f"user_{uuid4().hex[:10]}"
+
+        r_reg = client.post(
+            "/auth/registro",
+            json={"username": uname, "nombre": nombre, "password": password},
+        )
+        assert r_reg.status_code == 201, r_reg.get_json()
+        usuario_id = r_reg.get_json()["id"]
+
+        r_login = client.post(
+            "/auth/login",
+            json={"username": uname, "password": password},
+        )
+        assert r_login.status_code == 200, r_login.get_json()
+        token = r_login.get_json()["token"]
+
+        return {
+            "usuario_id": usuario_id,
+            "username": uname,
+            "password": password,
+            "token": token,
+            "headers": {"Authorization": f"Token {token}"},
+        }
+
+    return _create
+
+
+@pytest.fixture
 def wikidata_mock():
     """Mock de Wikidata: búsqueda y GET por id devuelven JUEGO_TEST_ID."""
     with requests_mock.Mocker() as m:
@@ -140,32 +177,3 @@ def wikidata_mock():
 def rawg_mock(wikidata_mock):
     """Alias de wikidata_mock para compatibilidad con tests que referencian rawg_mock."""
     return wikidata_mock
-
-
-@pytest.fixture
-def auth_user(client):
-    """Crea un usuario vía /auth/registro, hace login y devuelve token + headers."""
-
-    def _create(nombre: str = "Usuario Auth", password: str = "clave123"):
-        username = f"user_{uuid4().hex[:8]}"
-
-        r_reg = client.post(
-            "/auth/registro",
-            json={"username": username, "nombre": nombre, "password": password},
-        )
-        assert r_reg.status_code == 201
-        usuario = r_reg.get_json()
-
-        r_login = client.post("/auth/login", json={"username": username, "password": password})
-        assert r_login.status_code == 200
-        token = r_login.get_json()["token"]
-
-        return {
-            "usuario_id": usuario["id"],
-            "username": username,
-            "password": password,
-            "token": token,
-            "headers": {"Authorization": f"Token {token}"},
-        }
-
-    return _create
