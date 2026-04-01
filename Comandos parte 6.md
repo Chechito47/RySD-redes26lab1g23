@@ -4,14 +4,22 @@ Para probar el endpoint de sugerencias se usa **curl**. Recordá que para que un
 Los comandos que usamos son:
 
 **Obtener sugerencia aleatoria**:  
-`curl http://localhost:5000/usuarios/1/sugerencia`  
+```bash
+curl http://localhost:5000/usuarios/1/sugerencia
+``` 
 
 **Obtener sugerencia filtrada por género** *(ejemplo: género Acción)*:  
-`curl "http://localhost:5000/usuarios/1/sugerencia?genero=Accion"`  
+```bash
+curl "http://localhost:5000/usuarios/1/sugerencia?genero=Accion"
+```
 
 **Probar error de usuario inexistente** *(reemplazar 999 por un id que no exista)*:  
-`curl http://localhost:5000/usuarios/999/sugerencia`  
+```bash
+curl http://localhost:5000/usuarios/999/sugerencia
+```
 
 **Probar error cuando no hay juegos con "tengo: true"**:  
-`curl http://localhost:5000/usuarios/1/sugerencia`  
+```bash
+curl http://localhost:5000/usuarios/1/sugerencia
+``` 
 *(Este comando devolverá 404 si previamente vaciaste la lista o pusiste todos los juegos en "tengo: false")*

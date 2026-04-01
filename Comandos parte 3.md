@@ -7,16 +7,25 @@ Para probar los endpoints se uso **curl**. Las flags son:
 Los comandos que usamos son:  
 
 **Crear usuario**:  
-`curl -X POST http://localhost:5000/usuarios -H "Content-Type: application/json" -d '{"nombre": "Ana"}'`  
-
+```bash
+curl -X POST http://localhost:5000/usuarios -H "Content-Type: application/json" -d '{"nombre": "Ana"}'
+```
 **Listar usuarios**:  
-`curl http://localhost:5000/usuarios`  
+```bash
+curl http://localhost:5000/usuarios
+```
 
 **Obtener usuario por id** *(reemplazar 1 por algun id)*:  
-`curl http://localhost:5000/usuarios/1`  
+```bash
+curl http://localhost:5000/usuarios/1
+```
 
 **Actualizar usuario** *(reemplazar 1 por algun id)*:  
-`curl -X PUT http://localhost:5000/usuarios/1 -H "Content-Type: application/json" -d '{"nombre": "Ana"}'`  
+```bash
+curl -X PUT http://localhost:5000/usuarios/1 -H "Content-Type: application/json" -d '{"nombre": "Ana"}'
+```
 
 **Eliminar usuario** *(reemplazar 1 por algun id)*:  
-`curl -X DELETE http://localhost:5000/usuarios/1`
+```bash
+curl -X DELETE http://localhost:5000/usuarios/1
+```
