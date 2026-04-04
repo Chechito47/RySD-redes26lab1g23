@@ -29,7 +29,7 @@ Las evidencias de curl, pruebas manuales y resultados parciales del laboratorio 
 - **Parte 1 (Wikidata con curl + reflexión inicial):** [EVIDENCIAS.md](./EVIDENCIAS.md)
 - **Parte 3 (usuarios):** [Comandos parte 3.md](./Comandos%20parte%203.md)
 - **Parte 4 (listas de juegos):** [Comandos parte 4.md](./Comandos%20parte%204.md)
-- **Parte 5 (integración con Wikidata):** [Parte 5.md](./Parte%205.md)
+- **Parte 5 (integración con Wikidata):** [Comandos parte 5.md](./Comandos%20parte%205.md)
 - **Parte 6 (autenticación y sugerencias con curl):** [Comandos parte 6.md](./Comandos%20parte%206.md)
 
 ### Presentación:

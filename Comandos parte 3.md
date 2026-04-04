@@ -6,6 +6,9 @@ Para probar los endpoints se uso **curl**. Las flags son:
 
 Los comandos que usamos son:  
 
+> Nota: desde que se agregó seguridad, **PUT /usuarios/<id>** y **DELETE /usuarios/<id>** requieren
+> header `Authorization: Token <TOKEN>`.
+
 **Crear usuario**:  
 ```bash
 curl -X POST http://localhost:5000/usuarios -H "Content-Type: application/json" -d '{"nombre": "Ana"}'
@@ -20,12 +23,29 @@ curl http://localhost:5000/usuarios
 curl http://localhost:5000/usuarios/1
 ```
 
-**Actualizar usuario** *(reemplazar 1 por algun id)*:  
+**(Opcional) Obtener token para operaciones protegidas**:
 ```bash
-curl -X PUT http://localhost:5000/usuarios/1 -H "Content-Type: application/json" -d '{"nombre": "Ana"}'
+# 1) Registrar usuario con credenciales
+curl -X POST http://localhost:5000/auth/registro \
+	-H "Content-Type: application/json" \
+	-d '{"username":"ana","nombre":"Ana","password":"1234"}'
+
+# 2) Login (copiar el token que devuelve)
+curl -X POST http://localhost:5000/auth/login \
+	-H "Content-Type: application/json" \
+	-d '{"username":"ana","password":"1234"}'
+```
+
+**Actualizar usuario** *(reemplazar 1 por algun id)* y \<TOKEN> por el devuelto antes:  
+```bash
+curl -X PUT http://localhost:5000/usuarios/1 \
+	-H "Authorization: Token <TOKEN>" \
+	-H "Content-Type: application/json" \
+	-d '{"nombre": "Ana"}'
 ```
 
 **Eliminar usuario** *(reemplazar 1 por algun id)*:  
 ```bash
-curl -X DELETE http://localhost:5000/usuarios/1
+curl -X DELETE http://localhost:5000/usuarios/1 \
+	-H "Authorization: Token <TOKEN>"
 ```
