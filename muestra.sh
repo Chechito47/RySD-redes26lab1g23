@@ -29,18 +29,41 @@ from uuid import uuid4
 API_BASE = os.environ.get("API_BASE", "http://localhost:5000").rstrip("/")
 
 
+def _supports_color() -> bool:
+    if os.environ.get("NO_COLOR"):
+        return False
+    return sys.stdout.isatty()
+
+
+USE_COLOR = _supports_color()
+RESET = "\033[0m"
+BOLD = "\033[1m"
+CYAN = "\033[36m"
+YELLOW = "\033[33m"
+GREEN = "\033[32m"
+MAGENTA = "\033[35m"
+RED = "\033[31m"
+
+
+def _style(text: str, *codes: str) -> str:
+    if not USE_COLOR:
+        return text
+    return "".join(codes) + text + RESET
+
+
 def _print_title(title: str) -> None:
-    print("\n" + "=" * 80)
-    print(title)
-    print("=" * 80)
+    line = "=" * 80
+    print("\n" + _style(line, BOLD, MAGENTA))
+    print(_style(title, BOLD, MAGENTA))
+    print(_style(line, BOLD, MAGENTA))
 
 
 def _print_cmd(cmd: list[str]) -> None:
-    print("$ " + " ".join(shlex.quote(x) for x in cmd))
+    print(_style("$ " + " ".join(shlex.quote(x) for x in cmd), BOLD, CYAN))
 
 
 def _print_step(title: str) -> None:
-    print(f"\n--- {title} ---")
+    print("\n" + _style(f"--- {title} ---", BOLD, YELLOW))
 
 
 def _run_cmd(cmd: list[str]) -> subprocess.CompletedProcess[str]:
@@ -48,9 +71,9 @@ def _run_cmd(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     print()
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.stdout:
-        print(result.stdout.rstrip())
+        print(_style(result.stdout.rstrip(), GREEN))
     if result.stderr:
-        print(result.stderr.rstrip())
+        print(_style(result.stderr.rstrip(), RED))
     if result.returncode != 0:
         raise RuntimeError(f"Comando falló con código {result.returncode}")
     return result
@@ -83,7 +106,7 @@ def _run_curl(
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         if result.stderr:
-            print(result.stderr.rstrip())
+            print(_style(result.stderr.rstrip(), RED))
         raise RuntimeError(f"curl falló con código {result.returncode}")
 
     text = result.stdout
@@ -100,13 +123,14 @@ def _run_curl(
     if body:
         try:
             parsed = json.loads(body)
-            print(json.dumps(parsed, ensure_ascii=False, indent=2))
+            print(_style(json.dumps(parsed, ensure_ascii=False, indent=2), GREEN))
         except json.JSONDecodeError:
-            print(body)
+            print(_style(body, GREEN))
     else:
-        print("<sin body>")
+        print(_style("<sin body>", GREEN))
 
-    print(f"HTTP {status}")
+    status_color = GREEN if 200 <= status < 300 else RED
+    print(_style(f"HTTP {status}", BOLD, status_color))
     return status, parsed, body
 
 
@@ -299,8 +323,7 @@ def section_wikidata() -> None:
         },
     )
 
-    print("\nNota para video: si Wikidata no responde, el endpoint /juegos?q=...&fuente=wikidata devuelve 502.")
-
+    
 
 def section_calidad() -> None:
     _print_title("4) Pruebas y calidad")
