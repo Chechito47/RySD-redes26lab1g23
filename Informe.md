@@ -36,7 +36,7 @@ Las evidencias de curl, pruebas manuales y resultados parciales del laboratorio 
 [Link al presentación](https://canva.link/4mj3n29u3drpuix)
 
 ### Video de Defensa:
-[Link al video](http://link.com)
+[Link al video](https://drive.google.com/file/d/1OJozAr1neIa5LOnsOCBhAgn6TpW89gRX/view?usp=drivesdk)
 
 ## Configuración y uso
 
